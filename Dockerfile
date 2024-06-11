@@ -1,31 +1,29 @@
-ARG DOCKER_VERSION=latest
+ARG DOCKER_VERSION=26.1.4-alpine3.20
 
-FROM alpine:latest AS downloader
+FROM alpine:3.20 AS downloader
 RUN apk add --no-cache \
     curl \
     && rm -rf /var/cache/apk/*
 
 WORKDIR /usr/local/bin/
-ARG DOCKER_MACHINE_VERSION=v0.14.0
-ARG DOCKER_MACHINE_SHA256=a4c69bffb78d3cfe103b89dae61c3ea11cc2d1a91c4ff86e630c9ae88244db02
-ENV DOCKER_MACHINE_URL=https://github.com/docker/machine/releases/download/${DOCKER_MACHINE_VERSION}
-RUN curl -sLo docker-machine ${DOCKER_MACHINE_URL}/docker-machine-`uname -s`-`uname -m` \
-    && echo "$DOCKER_MACHINE_SHA256 *docker-machine" | sha256sum -c - \
-    && chmod +x docker-machine
+ENV DOCKER_MACHINE=https://gitlab-docker-machine-downloads.s3.amazonaws.com/main
+RUN curl -fsSLo /usr/local/bin/docker-machine ${DOCKER_MACHINE}/docker-machine-$(uname -s)-$(uname -m) \
+    && chmod +x /usr/local/bin/docker-machine
 
-ARG MANIFEST_TOOL_VERSION="v0.7.0/manifest-tool-linux-amd64"
+
+ARG MANIFEST_TOOL_VERSION="v2.1.6/manifest-tool-linux-amd64"
 ENV MANIFEST_TOOL_BASE_URL=https://github.com/estesp/manifest-tool/releases/download
 RUN echo "${MANIFEST_TOOL_BASE_URL}/${MANIFEST_TOOL_VERSION}" \
     && curl -sLo manifest-tool ${MANIFEST_TOOL_BASE_URL}/${MANIFEST_TOOL_VERSION} \
     && chmod +x manifest-tool
 
-ARG OPENFAASCLI_VERSION=0.6.4
-ARG OPENFAASCLI_SHA256
+#ARG OPENFAASCLI_VERSION=0.16.29
+#ARG OPENFAASCLI_SHA256
 
-ENV OPENFAASCLI_URL=https://github.com/openfaas/faas-cli/releases/download/${OPENFAASCLI_VERSION}/faas-cli
-RUN curl -fsSLo faas-cli ${OPENFAASCLI_URL} \
-    && echo "${OPENFAASCLI_SHA256} *faas-cli" | sha256sum -c - \
-    && chmod +x faas-cli
+#ENV OPENFAASCLI_URL=https://github.com/openfaas/faas-cli/releases/download/${OPENFAASCLI_VERSION}/faas-cli
+#RUN curl -fsSLo faas-cli ${OPENFAASCLI_URL} \
+#    && echo "${OPENFAASCLI_SHA256} *faas-cli" | sha256sum -c - \
+#    && chmod +x faas-cli
 
 FROM docker:$DOCKER_VERSION
 RUN apk add --no-cache \
@@ -48,11 +46,11 @@ RUN apk add --no-cache \
     openssl-dev \
     py3-pip \
     python3 \
-    python3-dev \
-    && pip3 install --upgrade pip
+    python3-dev 
+#    && pip3 install --upgrade pip
 
-RUN pip3 install awscli
-RUN ls -l /usr/local/bin/
+#RUN pip3 install awscli
+#RUN ls -l /usr/local/bin/
 
 
 #ARG DOCKER_COMPOSE_VERSION=1.20.1
@@ -67,14 +65,14 @@ RUN ls -l /usr/local/bin/
 #RUN pip3 install docker-compose==$DOCKER_COMPOSE_VERSION
 
 # copy precompiled docker-compose (linked to musl to work with alpine)
-COPY docker-compose /usr/local/bin/docker-compose
+#COPY docker-compose /usr/local/bin/docker-compose
 
 ENV SHELL=/bin/bash
 COPY --from=downloader /usr/local/bin/ /usr/local/bin/
 
 RUN { \
       docker-machine version; \
-      docker-compose version; \
+      docker compose version; \
       docker version || true; \
       faas-cli version || true; \
       manifest-tool --version || true; \
